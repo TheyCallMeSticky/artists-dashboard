@@ -1,0 +1,253 @@
+# ─────────────────────────────────────────────────────────────────
+# NEXT.JS & REACT
+# ─────────────────────────────────────────────────────────────────
+
+# Dependencies
+node_modules/
+/.pnp
+.pnp.js
+
+# Production build
+.next/
+out/
+dist/
+build/
+
+# Static files
+/public/sitemap.xml
+/public/robots.txt
+
+# Runtime data
+pids
+*.pid
+*.seed
+*.pid.lock
+
+# Coverage directory used by tools like istanbul
+coverage/
+*.lcov
+
+# NYC test coverage
+.nyc_output
+
+# ESLint cache
+.eslintcache
+
+# Stylelint cache
+.stylelintcache
+
+# Microbundle cache
+.rpt2_cache/
+.rts2_cache_cjs/
+.rts2_cache_es/
+.rts2_cache_umd/
+
+# Optional REPL history
+.node_repl_history
+
+# Output of 'npm pack'
+*.tgz
+
+# Yarn Integrity file
+.yarn-integrity
+
+# Next.js build output
+.next
+
+# Nuxt.js build / generate output
+.nuxt
+
+# Gatsby files
+.cache/
+public
+
+# Storybook build outputs
+.out
+.storybook-out
+
+# Temporary folders
+tmp/
+temp/
+
+# ─────────────────────────────────────────────────────────────────
+# TYPESCRIPT
+# ─────────────────────────────────────────────────────────────────
+
+# TypeScript cache
+*.tsbuildinfo
+
+# TypeScript compiled output
+*.tsbuildinfo
+next-env.d.ts
+
+# ─────────────────────────────────────────────────────────────────
+# PACKAGE MANAGERS
+# ─────────────────────────────────────────────────────────────────
+
+# NPM
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# PNPM
+pnpm-debug.log*
+
+# Yarn v2
+.yarn/cache
+.yarn/unplugged
+.yarn/build-state.yml
+.yarn/install-state.gz
+.pnp.*
+
+# ─────────────────────────────────────────────────────────────────
+# ENVIRONMENT & CONFIG
+# ─────────────────────────────────────────────────────────────────
+
+# Environment variables
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+.env.*.local
+
+# Configuration
+.config/
+
+# ─────────────────────────────────────────────────────────────────
+# DEVELOPMENT TOOLS
+# ─────────────────────────────────────────────────────────────────
+
+# VSCode
+.vscode/
+!.vscode/extensions.json
+!.vscode/settings.json
+
+# WebStorm / IntelliJ
+.idea/
+
+# Vim
+*.swp
+*.swo
+*~
+
+# Emacs
+*~
+\#*\#
+/.emacs.desktop
+/.emacs.desktop.lock
+*.elc
+auto-save-list
+tramp
+.\#*
+
+# ─────────────────────────────────────────────────────────────────
+# TESTING
+# ─────────────────────────────────────────────────────────────────
+
+# Jest
+coverage/
+.jest/
+
+# Cypress
+cypress/screenshots/
+cypress/videos/
+cypress/downloads/
+
+# Playwright
+test-results/
+playwright-report/
+playwright/.cache/
+
+# ─────────────────────────────────────────────────────────────────
+# STYLING & ASSETS
+# ─────────────────────────────────────────────────────────────────
+
+# TailwindCSS
+.tailwindcss
+
+# PostCSS
+.postcssrc.js
+
+# Sass
+.sass-cache/
+*.css.map
+*.sass.map
+*.scss.map
+
+# ─────────────────────────────────────────────────────────────────
+# DEPLOYMENT & HOSTING
+# ─────────────────────────────────────────────────────────────────
+
+# Vercel
+.vercel
+.vercel.json
+
+# Netlify
+.netlify
+
+# Sentry
+.sentryclirc
+
+# ─────────────────────────────────────────────────────────────────
+# OS & SYSTEM
+# ─────────────────────────────────────────────────────────────────
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+Icon
+._*
+.DocumentRevisions-V100
+.fseventsd
+.Spotlight-V100
+.TemporaryItems
+.Trashes
+.VolumeIcon.icns
+.com.apple.timemachine.donotpresent
+
+# Windows
+Thumbs.db
+Thumbs.db:encryptable
+ehthumbs.db
+ehthumbs_vista.db
+*.stackdump
+[Dd]esktop.ini
+$RECYCLE.BIN/
+*.cab
+*.msi
+*.msix
+*.msm
+*.msp
+*.lnk
+
+# Linux
+*~
+.directory
+.Trash-*
+
+# ─────────────────────────────────────────────────────────────────
+# PROJECT SPECIFIC
+# ─────────────────────────────────────────────────────────────────
+
+# Logs
+logs/
+*.log
+
+# Runtime data
+pids/
+*.pid
+
+# Optional cache directories
+.cache/
+cache/
+
+# Backup files
+*.bak
+*.backup
+*.old
+
+# Docker
+.dockerignore.bak
+docker-compose.override.yml
