@@ -4,7 +4,7 @@ const PYTHON_API_BASE = process.env.PYTHON_API_BASE || 'http://localhost:8001'
 
 export async function POST() {
   try {
-    const response = await fetch(`${PYTHON_API_BASE}/dashboard/resume-tubebuddy-scoring`, {
+    const response = await fetch(`${PYTHON_API_BASE}/extraction/resume-tubebuddy`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

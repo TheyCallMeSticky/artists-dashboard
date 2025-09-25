@@ -8,15 +8,33 @@ export default function ArtistsPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [refreshing, setRefreshing] = useState<number | null>(null)
+  const [totalArtists, setTotalArtists] = useState<number>(0)
+  const [currentPage, setCurrentPage] = useState<number>(1)
+  const itemsPerPage = 100
 
   useEffect(() => {
     fetchArtists()
-  }, [])
+    fetchTotalCount()
+  }, [currentPage])
+
+  const fetchTotalCount = async () => {
+    try {
+      const response = await fetch('/api/artists/count')
+      if (!response.ok) {
+        throw new Error('Failed to fetch total count')
+      }
+      const data = await response.json()
+      setTotalArtists(data.total)
+    } catch (err) {
+      console.error('Error fetching total count:', err)
+    }
+  }
 
   const fetchArtists = async () => {
     try {
       setLoading(true)
-      const response = await fetch('/api/artists?limit=100')
+      const skip = (currentPage - 1) * itemsPerPage
+      const response = await fetch(`/api/artists?skip=${skip}&limit=${itemsPerPage}`)
       if (!response.ok) {
         throw new Error('Failed to fetch artists')
       }
@@ -102,8 +120,13 @@ export default function ArtistsPage() {
 
         <div className="mb-6 flex justify-between items-center">
           <div className="text-sm text-gray-600">
-            {artists.length} artiste{artists.length > 1 ? 's' : ''} trouvé
-            {artists.length > 1 ? 's' : ''}
+            {totalArtists > 0 ? (
+              <>
+                Affichage de {(currentPage - 1) * itemsPerPage + 1} à {Math.min(currentPage * itemsPerPage, totalArtists)} sur {totalArtists} artiste{totalArtists > 1 ? 's' : ''}
+              </>
+            ) : (
+              `${artists.length} artiste${artists.length > 1 ? 's' : ''} trouvé${artists.length > 1 ? 's' : ''}`
+            )}
           </div>
           <button
             onClick={fetchArtists}
@@ -232,6 +255,64 @@ export default function ArtistsPage() {
                 </tbody>
               </table>
             </div>
+
+            {/* Pagination */}
+            {totalArtists > itemsPerPage && (
+              <div className="px-6 py-4 border-t border-gray-200 bg-gray-50">
+                <div className="flex justify-between items-center">
+                  <div className="text-sm text-gray-600">
+                    Page {currentPage} sur {Math.ceil(totalArtists / itemsPerPage)}
+                  </div>
+                  <div className="flex space-x-2">
+                    <button
+                      onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
+                      disabled={currentPage === 1}
+                      className="px-3 py-1 bg-white border border-gray-300 text-gray-600 rounded hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      ← Précédent
+                    </button>
+
+                    {/* Pages numériques */}
+                    {(() => {
+                      const totalPages = Math.ceil(totalArtists / itemsPerPage)
+                      const maxVisiblePages = 5
+                      let startPage = Math.max(1, currentPage - Math.floor(maxVisiblePages / 2))
+                      let endPage = Math.min(totalPages, startPage + maxVisiblePages - 1)
+
+                      if (endPage - startPage < maxVisiblePages - 1) {
+                        startPage = Math.max(1, endPage - maxVisiblePages + 1)
+                      }
+
+                      const pages = []
+                      for (let i = startPage; i <= endPage; i++) {
+                        pages.push(
+                          <button
+                            key={i}
+                            onClick={() => setCurrentPage(i)}
+                            className={`px-3 py-1 rounded ${
+                              i === currentPage
+                                ? 'bg-blue-600 text-white'
+                                : 'bg-white border border-gray-300 text-gray-600 hover:bg-gray-50'
+                            }`}
+                          >
+                            {i}
+                          </button>
+                        )
+                      }
+                      return pages
+                    })()}
+
+                    <button
+                      onClick={() => setCurrentPage(Math.min(Math.ceil(totalArtists / itemsPerPage), currentPage + 1))}
+                      disabled={currentPage === Math.ceil(totalArtists / itemsPerPage)}
+                      className="px-3 py-1 bg-white border border-gray-300 text-gray-600 rounded hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      Suivant →
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         )}
       </div>

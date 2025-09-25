@@ -19,10 +19,19 @@ export async function GET() {
     console.error('Erreur statut extraction:', error)
     return NextResponse.json(
       {
-        is_running: false,
+        status: 'idle',
+        progress_percentage: 0,
+        sources_processed: 0,
+        total_sources: 0,
+        artists_processed: 0,
+        artists_saved: 0,
+        new_artists: 0,
+        updated_artists: 0,
+        errors_count: 0,
+        is_active: false,
         error: error instanceof Error ? error.message : 'Erreur inconnue'
       },
-      { status: 500 }
+      { status: 200 }
     )
   }
 }

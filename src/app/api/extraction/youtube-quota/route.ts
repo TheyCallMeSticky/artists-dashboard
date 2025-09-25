@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server'
 
 export async function GET() {
   try {
-    const response = await fetch(`${process.env.PYTHON_API_BASE || 'http://localhost:8001'}/extraction/youtube-quota-status`, {
+    const response = await fetch(`${process.env.PYTHON_API_BASE || 'http://localhost:8001'}/extraction/youtube-quota`, {
       method: 'GET',
       headers: {
         'Content-Type': 'application/json',

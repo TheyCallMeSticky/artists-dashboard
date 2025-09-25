@@ -2,25 +2,25 @@
 
 import { useState, useEffect } from 'react'
 
-interface ExtractionResult {
-  extraction_type: string
-  timestamp: string
-  sources_processed: number
-  artists_found: number
-  artists_saved?: number
-  new_artists?: number
-  updated_artists?: number
-  priority_artists?: number
-  artists_with_enriched_metadata?: number
-  artists_marked_for_rescoring?: number
-  errors: string[]
-}
-
 interface ProcessStatus {
-  total_artists: number
-  scored_artists: number
-  pending_scoring: number
-  last_scoring?: string
+  id?: number
+  process_type?: string
+  status: string
+  progress_percentage: number
+  current_step?: string
+  sources_processed: number
+  total_sources: number
+  artists_processed: number
+  artists_saved: number
+  new_artists: number
+  updated_artists: number
+  errors_count: number
+  current_source?: string
+  error_message?: string
+  started_at?: string
+  completed_at?: string
+  last_update?: string
+  is_active: boolean
 }
 
 interface SystemStatus {
@@ -30,180 +30,99 @@ interface SystemStatus {
   top_scored: number
 }
 
-interface ExtractionStatus {
-  is_running: boolean
-  extraction_type?: string
-  started_at?: string
-  current_step?: string
-  sources_processed?: number
-  total_sources?: number
-  artists_processed?: number
-  artists_saved?: number
-  new_artists?: number
-  updated_artists?: number
-  current_source?: string
-  errors_count?: number
-  last_update?: string
+interface YouTubeQuota {
+  status: string
+  current_key_index: number
+  total_keys: number
+  quota_exceeded: boolean
+  last_reset?: string
 }
 
-interface YouTubeQuotaStatus {
-  status: string
-  total_keys: number
-  available_keys: number
-  exhausted_keys: number
-  current_key_index: number
-  exhausted_key_indices: number[]
-  requests_per_key: Record<string, number>
-  total_requests: number
-  quota_reset_info: string
-  error?: string
+interface Opportunity {
+  artist_id: number
+  name: string
+  score: number
+  category: string
+  recommendation: string
+  spotify_followers: number
+  youtube_subscribers: number
+  spotify_popularity: number
 }
 
 export default function ExtractionPage() {
-  const [phase1Loading, setPhase1Loading] = useState(false)
-  const [phase2Loading, setPhase2Loading] = useState(false)
-  const [scoringLoading, setScoringLoading] = useState(false)
-  const [phase1Result, setPhase1Result] = useState<ExtractionResult | null>(null)
-  const [phase2Result, setPhase2Result] = useState<ExtractionResult | null>(null)
-  const [scoringResult, setScoringResult] = useState<any>(null)
-  const [processStatus, setProcessStatus] = useState<ProcessStatus | null>(null)
+  const [processStatus, setProcessStatus] = useState<ProcessStatus>({ 
+    status: 'idle', 
+    progress_percentage: 0, 
+    sources_processed: 0, 
+    total_sources: 0, 
+    artists_processed: 0, 
+    artists_saved: 0, 
+    new_artists: 0, 
+    updated_artists: 0, 
+    errors_count: 0, 
+    is_active: false 
+  })
   const [systemStatus, setSystemStatus] = useState<SystemStatus | null>(null)
-  const [extractionStatus, setExtractionStatus] = useState<ExtractionStatus | null>(null)
-  const [youtubeQuotaStatus, setYoutubeQuotaStatus] = useState<YouTubeQuotaStatus | null>(null)
+  const [youtubeQuota, setYoutubeQuota] = useState<YouTubeQuota | null>(null)
+  const [opportunities, setOpportunities] = useState<Opportunity[]>([])
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
-  // Fonction pour récupérer le statut d'extraction
-  const fetchExtractionStatus = async () => {
-    try {
-      const response = await fetch('/api/extraction/status')
-      if (response.ok) {
-        const status = await response.json()
-        setExtractionStatus(status)
-
-        // Gérer les indicateurs de loading selon le statut
-        if (status.is_running) {
-          if (status.extraction_type === 'phase1-complete') {
-            setPhase1Loading(true)
-          } else if (status.extraction_type === 'phase2-weekly') {
-            setPhase2Loading(true)
-          }
-        } else {
-          // Extraction terminée, désactiver le loading
-          if (status.extraction_type === 'phase1-complete') {
-            setPhase1Loading(false)
-          } else if (status.extraction_type === 'phase2-weekly') {
-            setPhase2Loading(false)
-          }
-        }
-      }
-    } catch (error) {
-      console.error('Erreur récupération statut:', error)
-    }
-  }
-
-  // Polling du statut toutes les 2 secondes si une extraction est en cours
+  // Polling pour les mises à jour en temps réel
   useEffect(() => {
-    let interval: NodeJS.Timeout | null = null
-
-    // Récupérer le statut initial
-    fetchExtractionStatus()
-
-    // Si une extraction est en cours, démarrer le polling
-    if (extractionStatus?.is_running) {
-      interval = setInterval(fetchExtractionStatus, 2000)
-    }
-
-    return () => {
-      if (interval) {
-        clearInterval(interval)
+    const fetchStatus = async () => {
+      try {
+        const response = await fetch('/api/extraction/status')
+        if (response.ok) {
+          const data = await response.json()
+          setProcessStatus(data)
+        }
+      } catch (err) {
+        console.error('Erreur récupération statut:', err)
       }
     }
-  }, [extractionStatus?.is_running])
 
-  const runPhase1 = async () => {
-    setPhase1Loading(true)
-    setPhase1Result(null)
+    // Fetch initial
+    fetchStatus()
+
+    // Polling toutes les 5 secondes
+    const interval = setInterval(fetchStatus, 5000)
+
+    return () => clearInterval(interval)
+  }, [])
+
+  const startProcess = async (processType: string) => {
+    setLoading(true)
+    setError(null)
+    
     try {
-      const response = await fetch('/api/extraction/phase1-background', {
+      const endpoint = `/api/extraction/${processType}-background`
+      const response = await fetch(endpoint, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' }
       })
-
+      
       if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`)
+        const errorData = await response.json()
+        throw new Error(errorData.detail || `Erreur HTTP ${response.status}`)
       }
-
+      
       const result = await response.json()
-
-      // Afficher le message de démarrage
-      setPhase1Result({
-        extraction_type: 'phase1-complete',
-        timestamp: new Date().toISOString(),
-        sources_processed: 0,
-        artists_found: 0,
-        message: result.message || 'Extraction Phase 1 démarrée en arrière-plan',
-        errors: []
-      })
-
-      // Démarrer le suivi immédiatement
-      fetchExtractionStatus()
-
-    } catch (error) {
-      console.error('Erreur Phase 1:', error)
-      setPhase1Result({
-        extraction_type: 'phase1-complete',
-        timestamp: new Date().toISOString(),
-        sources_processed: 0,
-        artists_found: 0,
-        errors: [error instanceof Error ? error.message : 'Erreur inconnue']
-      })
-      setPhase1Loading(false)
+      console.log(`${processType} démarré:`, result)
+      
+    } catch (err) {
+      const errorMsg = err instanceof Error ? err.message : 'Erreur inconnue'
+      setError(errorMsg)
+      console.error(`Erreur ${processType}:`, err)
+    } finally {
+      setLoading(false)
     }
   }
 
-  const runPhase2 = async () => {
-    setPhase2Loading(true)
-    setPhase2Result(null)
-    try {
-      const response = await fetch('/api/extraction/phase2-background', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' }
-      })
-
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`)
-      }
-
-      const result = await response.json()
-
-      // Afficher le message de démarrage
-      setPhase2Result({
-        extraction_type: 'phase2-weekly',
-        timestamp: new Date().toISOString(),
-        sources_processed: 0,
-        artists_found: 0,
-        message: result.message || 'Extraction Phase 2 démarrée en arrière-plan',
-        errors: []
-      })
-
-      // Démarrer le suivi immédiatement
-      fetchExtractionStatus()
-
-    } catch (error) {
-      console.error('Erreur Phase 2:', error)
-      setPhase2Result({
-        extraction_type: 'phase2-weekly',
-        timestamp: new Date().toISOString(),
-        sources_processed: 0,
-        artists_found: 0,
-        errors: [error instanceof Error ? error.message : 'Erreur inconnue']
-      })
-      setPhase2Loading(false)
-    }
-  }
-
-  const resumeScoring = async () => {
-    setScoringLoading(true)
-    setScoringResult(null)
+  const resumeTubeBuddy = async () => {
+    setLoading(true)
+    setError(null)
+    
     try {
       const response = await fetch('/api/scoring/resume-tubebuddy', {
         method: 'POST',
@@ -211,167 +130,90 @@ export default function ExtractionPage() {
       })
       
       if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`)
+        const errorData = await response.json()
+        throw new Error(errorData.detail || `Erreur HTTP ${response.status}`)
       }
       
       const result = await response.json()
-      setScoringResult(result)
-    } catch (error) {
-      console.error('Erreur scoring:', error)
-      setScoringResult({
-        error: error instanceof Error ? error.message : 'Erreur inconnue'
-      })
+      console.log('TubeBuddy démarré:', result)
+      
+    } catch (err) {
+      const errorMsg = err instanceof Error ? err.message : 'Erreur inconnue'
+      setError(errorMsg)
+      console.error('Erreur TubeBuddy:', err)
     } finally {
-      setScoringLoading(false)
+      setLoading(false)
     }
   }
 
-  const getProcessStatus = async () => {
-    try {
-      const response = await fetch('/api/scoring/process-status')
-      if (response.ok) {
-        const result = await response.json()
-        setProcessStatus(result)
-      }
-    } catch (error) {
-      console.error('Erreur statut processus:', error)
-    }
-  }
-
-  const getSystemStatus = async () => {
+  const fetchSystemStatus = async () => {
     try {
       const response = await fetch('/api/scoring/system-status')
       if (response.ok) {
-        const result = await response.json()
-        setSystemStatus(result)
+        const data = await response.json()
+        setSystemStatus(data)
       }
-    } catch (error) {
-      console.error('Erreur statut système:', error)
+    } catch (err) {
+      console.error('Erreur statut système:', err)
     }
   }
 
-  const getYoutubeQuotaStatus = async () => {
+  const fetchYouTubeQuota = async () => {
     try {
       const response = await fetch('/api/extraction/youtube-quota')
       if (response.ok) {
-        const result = await response.json()
-        setYoutubeQuotaStatus(result)
+        const data = await response.json()
+        setYoutubeQuota(data)
       }
-    } catch (error) {
-      console.error('Erreur statut quotas YouTube:', error)
+    } catch (err) {
+      console.error('Erreur quota YouTube:', err)
     }
   }
 
-  const resetYoutubeKeys = async () => {
+  const resetYouTubeKeys = async () => {
     try {
-      const response = await fetch('/api/extraction/youtube-reset', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' }
-      })
+      const response = await fetch('/api/extraction/youtube-reset', { method: 'POST' })
       if (response.ok) {
-        const result = await response.json()
-        console.log('Reset YouTube:', result)
-        // Rafraîchir le statut
-        getYoutubeQuotaStatus()
+        fetchYouTubeQuota() // Refresh quota status
       }
-    } catch (error) {
-      console.error('Erreur reset YouTube:', error)
+    } catch (err) {
+      console.error('Erreur reset YouTube:', err)
     }
   }
 
-  const ResultCard = ({ title, result, loading }: { title: string, result: any, loading: boolean }) => (
-    <div className="bg-white rounded-lg shadow-md p-6">
-      <h3 className="text-lg font-semibold mb-4">{title}</h3>
-      {loading && (
-        <div className="flex items-center justify-center py-8">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-          <span className="ml-2 text-gray-600">En cours...</span>
-        </div>
-      )}
-      {result && !loading && (
-        <div className="space-y-2">
-          {result.error ? (
-            <div className="text-red-600 bg-red-50 p-3 rounded">
-              ❌ {result.error}
-            </div>
-          ) : (
-            <div className="space-y-2">
-              {result.artists_found !== undefined && (
-                <div className="flex justify-between">
-                  <span>Artistes trouvés:</span>
-                  <span className="font-medium">{result.artists_found}</span>
-                </div>
-              )}
-              {result.artists_saved !== undefined && (
-                <div className="flex justify-between">
-                  <span>Artistes sauvés:</span>
-                  <span className="font-medium">{result.artists_saved}</span>
-                </div>
-              )}
-              {result.new_artists !== undefined && (
-                <div className="flex justify-between">
-                  <span>Nouveaux artistes:</span>
-                  <span className="font-medium">{result.new_artists}</span>
-                </div>
-              )}
-              {result.updated_artists !== undefined && (
-                <div className="flex justify-between">
-                  <span>Artistes mis à jour:</span>
-                  <span className="font-medium">{result.updated_artists}</span>
-                </div>
-              )}
-              {result.priority_artists !== undefined && (
-                <div className="flex justify-between">
-                  <span>Artistes prioritaires:</span>
-                  <span className="font-medium">{result.priority_artists}</span>
-                </div>
-              )}
-              {result.artists_with_enriched_metadata !== undefined && (
-                <div className="flex justify-between">
-                  <span>Avec métadonnées enrichies:</span>
-                  <span className="font-medium">{result.artists_with_enriched_metadata}</span>
-                </div>
-              )}
-              {result.artists_marked_for_rescoring !== undefined && (
-                <div className="flex justify-between">
-                  <span>Marqués pour re-scoring:</span>
-                  <span className="font-medium">{result.artists_marked_for_rescoring}</span>
-                </div>
-              )}
-              {result.total_artists !== undefined && (
-                <div className="flex justify-between">
-                  <span>Total artistes:</span>
-                  <span className="font-medium">{result.total_artists}</span>
-                </div>
-              )}
-              {result.completed !== undefined && (
-                <div className="flex justify-between">
-                  <span>Terminés:</span>
-                  <span className="font-medium">{result.completed}</span>
-                </div>
-              )}
-              {result.remaining !== undefined && (
-                <div className="flex justify-between">
-                  <span>Restants:</span>
-                  <span className="font-medium">{result.remaining}</span>
-                </div>
-              )}
-              {result.message && (
-                <div className="text-green-600 bg-green-50 p-3 rounded">
-                  ✅ {result.message}
-                </div>
-              )}
-              {result.errors && result.errors.length > 0 && (
-                <div className="text-orange-600 bg-orange-50 p-3 rounded">
-                  ⚠️ {result.errors.length} erreur(s) détectée(s)
-                </div>
-              )}
-            </div>
-          )}
-        </div>
-      )}
-    </div>
-  )
+  const fetchTopOpportunities = async () => {
+    try {
+      const response = await fetch('/api/opportunities?limit=10')
+      if (response.ok) {
+        const data = await response.json()
+        setOpportunities(data.opportunities || [])
+      }
+    } catch (err) {
+      console.error('Erreur opportunités:', err)
+    }
+  }
+
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'running': return 'bg-blue-100 text-blue-800'
+      case 'completed': return 'bg-green-100 text-green-800'
+      case 'error': return 'bg-red-100 text-red-800'
+      case 'cancelled': return 'bg-gray-100 text-gray-800'
+      default: return 'bg-gray-100 text-gray-600'
+    }
+  }
+
+  const getProcessTypeLabel = (type?: string) => {
+    switch (type) {
+      case 'phase1': return 'Phase 1 - Extraction Complète'
+      case 'phase2': return 'Phase 2 - Extraction Hebdomadaire'
+      case 'tubebuddy': return 'Scoring TubeBuddy'
+      default: return 'Aucun processus'
+    }
+  }
+
+  const isProcessRunning = processStatus.status === 'running'
+  const canStartProcess = !isProcessRunning && !loading
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -379,256 +221,235 @@ export default function ExtractionPage() {
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-gray-900">🎯 Contrôle des Processus d&apos;Extraction</h1>
           <p className="mt-2 text-gray-600">
-            Gestion manuelle des phases d&apos;extraction et calculs TubeBuddy
+            Gestion des phases d&apos;extraction et calculs TubeBuddy
           </p>
         </div>
 
+        {/* Erreur globale */}
+        {error && (
+          <div className="mb-6 bg-red-50 border border-red-200 rounded-lg p-4">
+            <div className="flex">
+              <div className="text-red-400">❌</div>
+              <div className="ml-3">
+                <h3 className="text-sm font-medium text-red-800">Erreur</h3>
+                <p className="mt-1 text-sm text-red-700">{error}</p>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Statut du processus en cours */}
+        <div className="mb-8 bg-white rounded-lg shadow-md p-6">
+          <div className="flex justify-between items-start mb-4">
+            <h2 className="text-xl font-semibold text-gray-900">Statut Actuel</h2>
+            <span className={`px-3 py-1 rounded-full text-sm font-medium ${getStatusColor(processStatus.status)}`}>
+              {processStatus.status === 'idle' ? 'Inactif' : processStatus.status}
+            </span>
+          </div>
+
+          {processStatus.process_type && (
+            <div className="mb-4">
+              <h3 className="text-lg font-medium text-gray-800">
+                {getProcessTypeLabel(processStatus.process_type)}
+              </h3>
+            </div>
+          )}
+
+          {processStatus.current_step && (
+            <div className="mb-4">
+              <p className="text-gray-600">{processStatus.current_step}</p>
+            </div>
+          )}
+
+          {processStatus.current_source && (
+            <div className="mb-4">
+              <p className="text-sm text-gray-500">Source actuelle: {processStatus.current_source}</p>
+            </div>
+          )}
+
+          {/* Barre de progression */}
+          {isProcessRunning && (
+            <div className="mb-4">
+              <div className="flex justify-between text-sm text-gray-600 mb-1">
+                <span>Progression</span>
+                <span>{processStatus.progress_percentage}%</span>
+              </div>
+              <div className="w-full bg-gray-200 rounded-full h-2">
+                <div 
+                  className="bg-blue-600 h-2 rounded-full transition-all duration-300"
+                  style={{ width: `${processStatus.progress_percentage}%` }}
+                ></div>
+              </div>
+            </div>
+          )}
+
+          {/* Métriques */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div className="text-center">
+              <div className="text-2xl font-bold text-gray-900">{processStatus.sources_processed}</div>
+              <div className="text-sm text-gray-600">Sources traitées</div>
+              {processStatus.total_sources > 0 && (
+                <div className="text-xs text-gray-500">/ {processStatus.total_sources}</div>
+              )}
+            </div>
+            <div className="text-center">
+              <div className="text-2xl font-bold text-gray-900">{processStatus.artists_processed}</div>
+              <div className="text-sm text-gray-600">Artistes traités</div>
+            </div>
+            <div className="text-center">
+              <div className="text-2xl font-bold text-green-600">{processStatus.new_artists}</div>
+              <div className="text-sm text-gray-600">Nouveaux</div>
+            </div>
+            <div className="text-center">
+              <div className="text-2xl font-bold text-blue-600">{processStatus.updated_artists}</div>
+              <div className="text-sm text-gray-600">Mis à jour</div>
+            </div>
+          </div>
+
+          {processStatus.errors_count > 0 && (
+            <div className="mt-4 text-orange-600">
+              ⚠️ {processStatus.errors_count} erreur(s) détectée(s)
+            </div>
+          )}
+
+          {processStatus.error_message && (
+            <div className="mt-4 bg-red-50 border border-red-200 rounded p-3">
+              <p className="text-red-700 text-sm">{processStatus.error_message}</p>
+            </div>
+          )}
+
+          {processStatus.started_at && (
+            <div className="mt-4 text-xs text-gray-500">
+              Démarré: {new Date(processStatus.started_at).toLocaleString('fr-FR')}
+            </div>
+          )}
+        </div>
+
         {/* Boutons de contrôle */}
-        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4 mb-8">
+        <div className="grid gap-4 md:grid-cols-3 mb-8">
           <button
-            onClick={runPhase1}
-            disabled={phase1Loading}
-            className="bg-green-600 hover:bg-green-700 disabled:bg-gray-400 text-white font-medium py-3 px-4 rounded-lg transition-colors"
+            onClick={() => startProcess('phase1')}
+            disabled={!canStartProcess}
+            className="bg-green-600 hover:bg-green-700 disabled:bg-gray-400 text-white font-medium py-4 px-6 rounded-lg transition-colors"
           >
             🚀 Phase 1 Complète
+            <div className="text-sm opacity-90 mt-1">Extraction complète (50 vidéos/playlist)</div>
           </button>
           
           <button
-            onClick={runPhase2}
-            disabled={phase2Loading}
-            className="bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white font-medium py-3 px-4 rounded-lg transition-colors"
+            onClick={() => startProcess('phase2')}
+            disabled={!canStartProcess}
+            className="bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white font-medium py-4 px-6 rounded-lg transition-colors"
           >
             🔄 Phase 2 Hebdomadaire
+            <div className="text-sm opacity-90 mt-1">Nouveautés (7 derniers jours)</div>
           </button>
           
           <button
-            onClick={resumeScoring}
-            disabled={scoringLoading}
-            className="bg-orange-600 hover:bg-orange-700 disabled:bg-gray-400 text-white font-medium py-3 px-4 rounded-lg transition-colors"
+            onClick={resumeTubeBuddy}
+            disabled={!canStartProcess}
+            className="bg-orange-600 hover:bg-orange-700 disabled:bg-gray-400 text-white font-medium py-4 px-6 rounded-lg transition-colors"
           >
             📊 Reprendre TubeBuddy
-          </button>
-          
-          <button
-            onClick={getProcessStatus}
-            className="bg-purple-600 hover:bg-purple-700 text-white font-medium py-3 px-4 rounded-lg transition-colors"
-          >
-            📈 Statut Processus
+            <div className="text-sm opacity-90 mt-1">Calcul des scores en attente</div>
           </button>
         </div>
 
         {/* Boutons de monitoring */}
-        <div className="grid gap-4 md:grid-cols-2 mb-8">
+        <div className="grid gap-4 md:grid-cols-4 mb-8">
           <button
-            onClick={getSystemStatus}
+            onClick={fetchSystemStatus}
             className="bg-gray-600 hover:bg-gray-700 text-white font-medium py-2 px-4 rounded-lg transition-colors"
           >
             📋 État Système
           </button>
-
+          
           <button
-            onClick={() => window.open('/api/opportunities?limit=10', '_blank')}
+            onClick={fetchYouTubeQuota}
+            className="bg-red-600 hover:bg-red-700 text-white font-medium py-2 px-4 rounded-lg transition-colors"
+          >
+            📺 Quota YouTube
+          </button>
+          
+          <button
+            onClick={resetYouTubeKeys}
+            className="bg-yellow-600 hover:bg-yellow-700 text-white font-medium py-2 px-4 rounded-lg transition-colors"
+          >
+            🔄 Reset YouTube
+          </button>
+          
+          <button
+            onClick={fetchTopOpportunities}
             className="bg-indigo-600 hover:bg-indigo-700 text-white font-medium py-2 px-4 rounded-lg transition-colors"
           >
             🎯 Top Opportunités
           </button>
         </div>
 
-        {/* Boutons YouTube */}
-        <div className="grid gap-4 md:grid-cols-3 mb-8">
-          <button
-            onClick={getYoutubeQuotaStatus}
-            className="bg-red-600 hover:bg-red-700 text-white font-medium py-2 px-4 rounded-lg transition-colors"
-          >
-            📊 Quotas YouTube
-          </button>
-
-          <button
-            onClick={resetYoutubeKeys}
-            className="bg-yellow-600 hover:bg-yellow-700 text-white font-medium py-2 px-4 rounded-lg transition-colors"
-          >
-            🔄 Reset Clés YouTube
-          </button>
-
-          <div></div>
-        </div>
-
-        {/* Descriptions des processus */}
-        <div className="grid gap-6 md:grid-cols-2 mb-8">
-          <div className="bg-white rounded-lg shadow-md p-6">
-            <h3 className="text-lg font-semibold mb-3 text-green-700">🚀 Phase 1 - Extraction Complète</h3>
-            <ul className="text-sm text-gray-600 space-y-1">
-              <li>• 50 dernières vidéos de chaque chaîne YouTube</li>
-              <li>• Extraction totale des playlists Spotify</li>
-              <li>• Métadonnées enrichies (genre, style, mood)</li>
-              <li>• Persistance avec dates de tracking</li>
-            </ul>
-          </div>
-          
-          <div className="bg-white rounded-lg shadow-md p-6">
-            <h3 className="text-lg font-semibold mb-3 text-blue-700">🔄 Phase 2 - Mise à jour Hebdomadaire</h3>
-            <ul className="text-sm text-gray-600 space-y-1">
-              <li>• Nouveaux contenus (7 derniers jours)</li>
-              <li>• Re-scoring intelligent</li>
-              <li>• Mise à jour métriques Spotify/YouTube</li>
-              <li>• Optimisé pour quotas API</li>
-            </ul>
-          </div>
-        </div>
-
-        {/* Statut en temps réel */}
-        {extractionStatus?.is_running && (
-          <div className="bg-blue-50 border border-blue-200 rounded-lg p-6 mb-8">
-            <div className="flex items-center mb-4">
-              <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-blue-600 mr-3"></div>
-              <h3 className="text-lg font-semibold text-blue-800">
-                🚀 Extraction en cours - {extractionStatus.extraction_type}
-              </h3>
-            </div>
-            <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-4">
-              {extractionStatus.current_step && (
-                <div className="text-sm">
-                  <span className="font-medium text-blue-700">Étape:</span>
-                  <div className="text-blue-600">{extractionStatus.current_step}</div>
-                </div>
-              )}
-              {extractionStatus.sources_processed !== undefined && (
-                <div className="text-sm">
-                  <span className="font-medium text-blue-700">Sources traitées:</span>
-                  <div className="text-blue-600">{extractionStatus.sources_processed}</div>
-                </div>
-              )}
-              {extractionStatus.artists_processed !== undefined && (
-                <div className="text-sm">
-                  <span className="font-medium text-blue-700">Artistes traités:</span>
-                  <div className="text-blue-600">{extractionStatus.artists_processed}</div>
-                </div>
-              )}
-              {extractionStatus.new_artists !== undefined && (
-                <div className="text-sm">
-                  <span className="font-medium text-blue-700">Nouveaux artistes:</span>
-                  <div className="text-blue-600">{extractionStatus.new_artists}</div>
-                </div>
-              )}
-            </div>
-            {extractionStatus.started_at && (
-              <div className="text-xs text-blue-500 mt-3">
-                Démarré: {new Date(extractionStatus.started_at).toLocaleString()}
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* Résultats */}
+        {/* Informations système */}
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-          <ResultCard title="Résultat Phase 1" result={phase1Result} loading={phase1Loading} />
-          <ResultCard title="Résultat Phase 2" result={phase2Result} loading={phase2Loading} />
-          <ResultCard title="Calculs TubeBuddy" result={scoringResult} loading={scoringLoading} />
-        </div>
-
-        {/* Statuts */}
-        {(processStatus || systemStatus || youtubeQuotaStatus) && (
-          <div className="grid gap-6 md:grid-cols-3 mt-8">
-            {processStatus && (
-              <div className="bg-white rounded-lg shadow-md p-6">
-                <h3 className="text-lg font-semibold mb-4">📈 Statut des Processus</h3>
-                <div className="space-y-2">
-                  <div className="flex justify-between">
-                    <span>Total artistes:</span>
-                    <span className="font-medium">{processStatus.total_artists}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span>Avec scores TubeBuddy:</span>
-                    <span className="font-medium">{processStatus.scored_artists}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span>En attente de calcul:</span>
-                    <span className="font-medium">{processStatus.pending_scoring}</span>
-                  </div>
-                  {processStatus.last_scoring && (
-                    <div className="flex justify-between">
-                      <span>Dernier calcul:</span>
-                      <span className="font-medium text-sm">{processStatus.last_scoring}</span>
-                    </div>
-                  )}
+          {systemStatus && (
+            <div className="bg-white rounded-lg shadow-md p-6">
+              <h3 className="text-lg font-semibold mb-4">📋 État Système</h3>
+              <div className="space-y-2">
+                <div className="flex justify-between">
+                  <span>Artistes en base:</span>
+                  <span className="font-medium">{systemStatus.total_artists}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>Chaînes YouTube:</span>
+                  <span className="font-medium">{systemStatus.youtube_channels}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>Playlists Spotify:</span>
+                  <span className="font-medium">{systemStatus.spotify_playlists}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>Score excellent (≥80):</span>
+                  <span className="font-medium">{systemStatus.top_scored}</span>
                 </div>
               </div>
-            )}
-            
-            {systemStatus && (
-              <div className="bg-white rounded-lg shadow-md p-6">
-                <h3 className="text-lg font-semibold mb-4">📋 État Système</h3>
-                <div className="space-y-2">
-                  <div className="flex justify-between">
-                    <span>Artistes en base:</span>
-                    <span className="font-medium">{systemStatus.total_artists}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span>Chaînes YouTube:</span>
-                    <span className="font-medium">{systemStatus.youtube_channels}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span>Playlists Spotify:</span>
-                    <span className="font-medium">{systemStatus.spotify_playlists}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span>Excellent score (≥80):</span>
-                    <span className="font-medium">{systemStatus.top_scored}</span>
-                  </div>
+            </div>
+          )}
+          
+          {youtubeQuota && (
+            <div className="bg-white rounded-lg shadow-md p-6">
+              <h3 className="text-lg font-semibold mb-4">📺 Quota YouTube</h3>
+              <div className="space-y-2">
+                <div className="flex justify-between">
+                  <span>Statut:</span>
+                  <span className={`font-medium ${youtubeQuota.quota_exceeded ? 'text-red-600' : 'text-green-600'}`}>
+                    {youtubeQuota.quota_exceeded ? 'Épuisé' : 'OK'}
+                  </span>
                 </div>
-              </div>
-            )}
-
-            {youtubeQuotaStatus && (
-              <div className="bg-white rounded-lg shadow-md p-6">
-                <h3 className="text-lg font-semibold mb-4">📊 Quotas YouTube</h3>
-                {youtubeQuotaStatus.error ? (
-                  <div className="text-red-600 bg-red-50 p-3 rounded">
-                    ❌ {youtubeQuotaStatus.error}
-                  </div>
-                ) : (
-                  <div className="space-y-2">
-                    <div className="flex justify-between">
-                      <span>Clés totales:</span>
-                      <span className="font-medium">{youtubeQuotaStatus.total_keys}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span>Clés disponibles:</span>
-                      <span className={`font-medium ${youtubeQuotaStatus.available_keys > 0 ? 'text-green-600' : 'text-red-600'}`}>
-                        {youtubeQuotaStatus.available_keys}
-                      </span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span>Clés épuisées:</span>
-                      <span className={`font-medium ${youtubeQuotaStatus.exhausted_keys > 0 ? 'text-orange-600' : 'text-gray-600'}`}>
-                        {youtubeQuotaStatus.exhausted_keys}
-                      </span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span>Clé actuelle:</span>
-                      <span className="font-medium">#{youtubeQuotaStatus.current_key_index + 1}</span>
-                    </div>
-                    {youtubeQuotaStatus.exhausted_key_indices.length > 0 && (
-                      <div className="flex justify-between">
-                        <span>Clés épuisées:</span>
-                        <span className="font-medium text-orange-600">
-                          #{youtubeQuotaStatus.exhausted_key_indices.join(', #')}
-                        </span>
-                      </div>
-                    )}
-                    <div className="flex justify-between">
-                      <span>Total requêtes:</span>
-                      <span className="font-medium">{youtubeQuotaStatus.total_requests}</span>
-                    </div>
-                    <div className="text-xs text-gray-500 mt-3 p-2 bg-gray-50 rounded">
-                      💡 {youtubeQuotaStatus.quota_reset_info}
-                    </div>
+                <div className="flex justify-between">
+                  <span>Clé actuelle:</span>
+                  <span className="font-medium">{youtubeQuota.current_key_index + 1}/{youtubeQuota.total_keys}</span>
+                </div>
+                {youtubeQuota.last_reset && (
+                  <div className="flex justify-between">
+                    <span>Dernier reset:</span>
+                    <span className="font-medium text-sm">{new Date(youtubeQuota.last_reset).toLocaleString()}</span>
                   </div>
                 )}
               </div>
-            )}
-          </div>
-        )}
+            </div>
+          )}
+          
+          {opportunities.length > 0 && (
+            <div className="bg-white rounded-lg shadow-md p-6">
+              <h3 className="text-lg font-semibold mb-4">🎯 Top Opportunités</h3>
+              <div className="space-y-2">
+                {opportunities.slice(0, 5).map((opp, i) => (
+                  <div key={opp.artist_id} className="flex justify-between text-sm">
+                    <span className="truncate">{i+1}. {opp.name}</span>
+                    <span className="font-medium">{opp.score.toFixed(1)}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
       </div>
     </div>
   )

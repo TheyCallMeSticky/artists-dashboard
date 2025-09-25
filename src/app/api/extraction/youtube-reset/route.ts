@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server'
 
 export async function POST() {
   try {
-    const response = await fetch(`${process.env.PYTHON_API_BASE || 'http://localhost:8001'}/extraction/youtube-reset-keys`, {
+    const response = await fetch(`${process.env.PYTHON_API_BASE || 'http://localhost:8001'}/extraction/youtube-reset`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

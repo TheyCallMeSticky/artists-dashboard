@@ -4,7 +4,7 @@ export async function POST() {
   try {
     const PYTHON_API_BASE = process.env.PYTHON_API_BASE || 'http://localhost:8001'
 
-    const response = await fetch(`${PYTHON_API_BASE}/extraction/incremental/background`, {
+    const response = await fetch(`${PYTHON_API_BASE}/extraction/phase2-background`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
