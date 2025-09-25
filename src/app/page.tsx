@@ -79,6 +79,14 @@ export default function Home() {
             Découvrez les meilleures opportunités d&apos;artistes hip-hop émergents pour vos type
             beats
           </p>
+          <div className="mt-4">
+            <a
+              href="/extraction"
+              className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+            >
+              🚀 Contrôler les Processus d&apos;Extraction
+            </a>
+          </div>
         </div>
 
         <div className="mb-6 flex justify-between items-center">

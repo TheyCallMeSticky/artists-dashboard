@@ -8,6 +8,7 @@ export default function Navigation() {
 
   const navItems = [
     { href: '/', label: 'Dashboard', icon: '📊' },
+    { href: '/extraction', label: 'Extraction', icon: '🚀' },
     { href: '/collect', label: 'Collecter', icon: '🎵' },
     { href: '/artists', label: 'Artistes', icon: '👥' }
   ]

@@ -37,12 +37,24 @@ export default function CollectPage() {
       }
     } catch (error) {
       console.error('Error collecting artist:', error)
+      let errorMessage = 'Unknown error'
+
+      if (error instanceof Error) {
+        if (error.name === 'TimeoutError') {
+          errorMessage = 'Timeout: La collecte prend trop de temps (>60s)'
+        } else if (error.message.includes('fetch')) {
+          errorMessage = 'Erreur de connexion à l\'API'
+        } else {
+          errorMessage = error.message
+        }
+      }
+
       setResult({
         success: false,
         artist_name: singleArtist,
         spotify_data_collected: false,
         youtube_data_collected: false,
-        errors: [error instanceof Error ? error.message : 'Unknown error']
+        errors: [errorMessage]
       })
     } finally {
       setLoading(false)
@@ -81,6 +93,19 @@ export default function CollectPage() {
       }
     } catch (error) {
       console.error('Error collecting artists:', error)
+
+      // Gestion des erreurs similaire à la fonction single artist
+      setResult({
+        total_artists: artistNames.length,
+        successful_collections: 0,
+        failed_collections: artistNames.length,
+        artists_processed: artistNames.map(name => ({
+          name,
+          status: 'error' as const,
+          error: error instanceof Error ? error.message : 'Unknown error'
+        })),
+        errors: [error instanceof Error ? error.message : 'Unknown error']
+      })
     } finally {
       setLoading(false)
     }

@@ -170,26 +170,26 @@ export default function ArtistsPage() {
                       <td className="px-6 py-4 whitespace-nowrap">
                         <span
                           className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getScoreColor(
-                            artist.score
+                            artist.score || 0
                           )}`}
                         >
-                          {artist.score.toFixed(1)}
+                          {(artist.score || 0).toFixed(1)}
                         </span>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                        <div>{formatNumber(artist.spotify_followers)} followers</div>
+                        <div>{formatNumber(artist.spotify_followers || 0)} followers</div>
                         <div className="text-gray-500">
-                          {formatNumber(artist.monthly_listeners)} écoutes/mois
+                          {formatNumber(artist.monthly_listeners || 0)} écoutes/mois
                         </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                        <div>{formatNumber(artist.youtube_subscribers)} subs</div>
+                        <div>{formatNumber(artist.youtube_subscribers || 0)} subs</div>
                         <div className="text-gray-500">
-                          {formatNumber(artist.youtube_views)} vues
+                          {formatNumber(artist.youtube_views || 0)} vues
                         </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                        {artist.spotify_popularity}/100
+                        {artist.spotify_popularity || 0}/100
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                         {artist.updated_at

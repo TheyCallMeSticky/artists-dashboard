@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 
-const PYTHON_API_BASE = process.env.PYTHON_API_BASE || 'http://localhost:8000'
+const PYTHON_API_BASE = process.env.PYTHON_API_BASE || 'http://localhost:8001'
 
 export async function POST(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {

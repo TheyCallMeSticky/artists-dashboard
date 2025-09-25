@@ -3,13 +3,13 @@ export interface Artist {
   name: string
   spotify_id?: string
   youtube_channel_id?: string
-  spotify_followers: number
-  spotify_popularity: number
-  monthly_listeners: number
-  youtube_subscribers: number
-  youtube_views: number
-  youtube_videos_count: number
-  score: number
+  spotify_followers?: number
+  spotify_popularity?: number
+  monthly_listeners?: number
+  youtube_subscribers?: number
+  youtube_views?: number
+  youtube_videos_count?: number
+  score?: number
   genre: string
   country?: string
   is_active: boolean
