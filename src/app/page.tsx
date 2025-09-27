@@ -129,20 +129,20 @@ export default function Home() {
 
                 <div className="space-y-2 mb-4">
                   <div className="flex justify-between text-sm">
-                    <span className="text-gray-600">Spotify:</span>
+                    <span className="text-gray-600">Volume de recherche:</span>
                     <span className="font-medium">
-                      {formatNumber(opportunity.spotify_followers)} followers
+                      {opportunity.tubebuddy_details.search_volume_score}/100
                     </span>
                   </div>
                   <div className="flex justify-between text-sm">
-                    <span className="text-gray-600">YouTube:</span>
+                    <span className="text-gray-600">Compétition:</span>
                     <span className="font-medium">
-                      {formatNumber(opportunity.youtube_subscribers)} subs
+                      {opportunity.tubebuddy_details.competition_score}/100
                     </span>
                   </div>
                   <div className="flex justify-between text-sm">
-                    <span className="text-gray-600">Popularité:</span>
-                    <span className="font-medium">{opportunity.spotify_popularity}/100</span>
+                    <span className="text-gray-600">Optimisation:</span>
+                    <span className="font-medium">{opportunity.tubebuddy_details.optimization_score}/100</span>
                   </div>
                 </div>
 
@@ -177,11 +177,18 @@ export default function Home() {
                   )}
                 </div>
 
-                {opportunity.updated_at && (
-                  <div className="mt-3 text-xs text-gray-500">
-                    Mis à jour: {new Date(opportunity.updated_at).toLocaleDateString('fr-FR')}
-                  </div>
-                )}
+                <div className="mt-3 text-xs text-gray-500 space-y-1">
+                  {opportunity.updated_at && (
+                    <div>
+                      Données mises à jour: {new Date(opportunity.updated_at).toLocaleDateString('fr-FR')}
+                    </div>
+                  )}
+                  {opportunity.score_date && (
+                    <div>
+                      Score calculé: {new Date(opportunity.score_date).toLocaleDateString('fr-FR')}
+                    </div>
+                  )}
+                </div>
               </div>
             ))}
           </div>

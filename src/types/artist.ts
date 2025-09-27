@@ -17,10 +17,18 @@ export interface Artist {
   updated_at?: string
 }
 
+export interface TubeBuddyDetails {
+  search_volume_score: number
+  competition_score: number
+  optimization_score: number
+  overall_score: number
+}
+
 export interface Opportunity {
   artist_id: number
   name: string
   score: number
+  tubebuddy_details: TubeBuddyDetails
   category: string
   recommendation: string
   spotify_id?: string
@@ -29,6 +37,7 @@ export interface Opportunity {
   youtube_subscribers: number
   spotify_popularity: number
   updated_at?: string
+  score_date?: string
 }
 
 export interface OpportunitiesResponse {

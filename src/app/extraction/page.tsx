@@ -122,25 +122,65 @@ export default function ExtractionPage() {
   const resumeTubeBuddy = async () => {
     setLoading(true)
     setError(null)
-    
+
     try {
       const response = await fetch('/api/scoring/resume-tubebuddy', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' }
       })
-      
+
       if (!response.ok) {
         const errorData = await response.json()
         throw new Error(errorData.detail || `Erreur HTTP ${response.status}`)
       }
-      
+
       const result = await response.json()
       console.log('TubeBuddy démarré:', result)
-      
+
     } catch (err) {
       const errorMsg = err instanceof Error ? err.message : 'Erreur inconnue'
       setError(errorMsg)
       console.error('Erreur TubeBuddy:', err)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const stopProcess = async () => {
+    if (!confirm('Êtes-vous sûr de vouloir arrêter le processus en cours ? Le container sera redémarré.')) {
+      return
+    }
+
+    setLoading(true)
+    setError(null)
+
+    try {
+      const response = await fetch('/api/extraction/stop-process', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' }
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.detail || `Erreur HTTP ${response.status}`)
+      }
+
+      const result = await response.json()
+      console.log('Processus arrêté:', result)
+
+      if (result.status === 'no_process') {
+        setError('Aucun processus en cours à arrêter')
+      } else {
+        // Recharger la page pour voir l'état mis à jour
+        setTimeout(() => {
+          window.location.reload()
+        }, 1000)
+      }
+
+    } catch (err) {
+      const errorMsg = err instanceof Error ? err.message : 'Erreur inconnue'
+      setError(errorMsg)
+      console.error('Erreur arrêt processus:', err)
     } finally {
       setLoading(false)
     }
@@ -352,6 +392,15 @@ export default function ExtractionPage() {
           >
             📊 Reprendre TubeBuddy
             <div className="text-sm opacity-90 mt-1">Calcul des scores en attente</div>
+          </button>
+
+          <button
+            onClick={stopProcess}
+            disabled={!isProcessRunning || loading}
+            className="bg-red-600 hover:bg-red-700 disabled:bg-gray-400 text-white font-medium py-4 px-6 rounded-lg transition-colors"
+          >
+            🛑 Arrêter Processus
+            <div className="text-sm opacity-90 mt-1">Force l&apos;arrêt + redémarrage</div>
           </button>
         </div>
 
